@@ -43,20 +43,23 @@ def analyze_efficiency(folder, model, task):
         if task_id != task:
             continue
         with open(filename) as f:
-            samples = json.load(f) 
-        cnt = 0 
+            samples = json.load(f)
+        cnt = 0
         K = 3
         for var_id, sample in samples.items():
             scores = [int(float(h['score'])*100) for h in sample['history']['history'] if float(h['score'])>=0]
             while scores[-1] == scores[-2] == 100:
                 scores.pop(-1)
-            end = len(scores)
             if model == "Oracle" and scores[-1] != 100:
                 print(task_id, var_id, "WARN")
-            for i in range(len(scores)-1):
-                if scores[i]>scores[i+1]:
-                    end = i + 1
-                    break 
+            end = next(
+                (
+                    i + 1
+                    for i in range(len(scores) - 1)
+                    if scores[i] > scores[i + 1]
+                ),
+                len(scores),
+            )
             scores = scores[:end]
             scores = add_random_float(scores)
             times = list(range(1, len(scores)+1))
@@ -67,7 +70,7 @@ def analyze_efficiency(folder, model, task):
             # print(var_id)
             if cnt >= K:
                 break 
-            
+
     return data 
 
 
@@ -75,11 +78,11 @@ data = []
 
 if task == "easy":
     tasks = easy_tasks
-elif task == "medium":
-    tasks = medium_tasks
 elif task == "hard":
     tasks = hard_tasks
-    
+
+elif task == "medium":
+    tasks = medium_tasks
 for t in tasks:
     t = str(t)
     data += analyze_efficiency("analysis/oracle_log", model="Oracle", task=t)
@@ -89,7 +92,7 @@ for t in tasks:
     # data += analyze_efficiency("saycan_logs/gpt-4", model="SayCan", task=t)
 
 
-max_time_length = max([len(x["time"]) for x in data])
+max_time_length = max(len(x["time"]) for x in data)
 
 # max_time_length = 30
 
@@ -105,13 +108,13 @@ for d in data:
         d['time'] += list(range(K+1, max_time_length+1))
         d['score'] += [last_score] * (max_time_length - K ) 
         assert len(d['time']) == len(d['score'])
-         
+
 
 sns.set_palette("husl")
 plt.figure(figsize=(8, 8))
 markers = ['o', 'v', 's', '4']
 marker_size = 3  # Adjust the marker size as desired
-models = sorted(list(set(d['model'] for d in data)))
+models = sorted(list({d['model'] for d in data}))
 linestyles = [':', ':', ':', ':']
 model_colors = {
     # "SayCan": "yellow",

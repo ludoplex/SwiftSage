@@ -106,13 +106,8 @@ def add_current_place(curr_obs, look, places):
 
 
 def add_current_objects(task_id, look, objects, limit=20):
-    # if task_id in ['24', '28', '29']:
-    if True:
-        things = re.findall(r'a .*?\n', look.replace(',', '\n').replace(
-            '.', '\n').replace('(', '\n').replace(')', ' ').replace(' an ', ' a '), re.I)
-    else:
-        things = re.findall(r'a .*?\n', look.replace(',',
-                            '\n').replace('.', '\n').replace(' an ', ' a '), re.I)
+    things = re.findall(r'a .*?\n', look.replace(',', '\n').replace(
+        '.', '\n').replace('(', '\n').replace(')', ' ').replace(' an ', ' a '), re.I)
     # things = re.findall(r'a .*?\n', look, re.I)
 
     flag = 0
@@ -149,12 +144,12 @@ def compose_instance_v5(mode, step_id, task_desc, returns_to_go, curr_action,
     label = curr_action
 
     # ============================================================= #
-        
-    input_str = task_desc + f" </s> Time: {step_id}; Score: {int(recent_scores[-1]*100)}; </s> "
-    
+
+    input_str = f"{task_desc} </s> Time: {step_id}; Score: {int(recent_scores[-1] * 100)}; </s> "
+
     # if returns_to_go != None :
     #     input_str += 'Reward:' + str(returns_to_go) + + " </s> "
-     
+
     # input_str += 'The previous action: ' + prev_action + ' </s> '
     # input_str += "The previous observation: " + prev_obs + ' </s> ' 
 
@@ -162,39 +157,39 @@ def compose_instance_v5(mode, step_id, task_desc, returns_to_go, curr_action,
     #     input_str += 'Current observation: ' + curr_obs + " </s> "
     # else:
     #     input_str += 'Current observation: the same as current environment. </s> '
-    
+
     # if recent_actions:
     #     input_str += "Recent actions: " + ", ".join(recent_actions) + ' </s> '     
-    input_str += "Action history: </s>" 
+    input_str += "Action history: </s>"
     ind = 10
     for obs, action, reward in zip(recent_obs[-10:], recent_actions[-10:], recent_reward[-10:]):
         input_str += f" <extra_id_{ind}> {formalize_action(action)} (+{int(reward*100)}) --> {obs} | "
         ind -= 1
     input_str += " </s> " 
 
-    input_str += "Current environment: " + look + " </s> " 
-    input_str += "Current inventory: " + inventory + " </s> "
-    
+    input_str += f"Current environment: {look} </s> "
+    input_str += f"Current inventory: {inventory} </s> "
+
     if places:
         input_str +=  "Visited rooms: " + ", ".join(places)  + ' </s> '
-    
+
     # current_objs = []
     # add_current_objects(task_id=-1, look=look, objects=current_objs, limit=20)
     # if current_objs:
     #     input_str += "Seen current_objs: " + ", ".join(current_objs) + ' </s> '
-        
+
     input_str += ' What action should you do next? </s> '
-    
+
     input_str = sanitizeStr(input_str)
     input_str = input_str.replace("(that is open)", "")
-    input_str = input_str.replace("(containing nothing)", "") 
+    input_str = input_str.replace("(containing nothing)", "")
     if label != None:
         action_formatted = formalize_action(sanitizeStr(label))
-        if action_formatted == None:
+        if action_formatted is None:
             print(label)
             raise Exception
     else:
-        action_formatted = None 
+        action_formatted = None
     return input_str, action_formatted
 
 def compose_instance_v4(mode, step_id, task_desc, returns_to_go, curr_action,
@@ -205,12 +200,12 @@ def compose_instance_v4(mode, step_id, task_desc, returns_to_go, curr_action,
     label = curr_action
 
     # ============================================================= #
-        
-    input_str = task_desc + f" </s> Time: {step_id}; Score: {int(recent_scores[-1]*100)}; </s> "
-    
+
+    input_str = f"{task_desc} </s> Time: {step_id}; Score: {int(recent_scores[-1] * 100)}; </s> "
+
     # if returns_to_go != None :
     #     input_str += 'Reward:' + str(returns_to_go) + + " </s> "
-     
+
     # input_str += 'The previous action: ' + prev_action + ' </s> '
     # input_str += "The previous observation: " + prev_obs + ' </s> ' 
 
@@ -218,32 +213,32 @@ def compose_instance_v4(mode, step_id, task_desc, returns_to_go, curr_action,
     #     input_str += 'Current observation: ' + curr_obs + " </s> "
     # else:
     #     input_str += 'Current observation: the same as current environment. </s> '
-    
+
     # if recent_actions:
     #     input_str += "Recent actions: " + ", ".join(recent_actions) + ' </s> '     
-    input_str += "Action history: </s>" 
+    input_str += "Action history: </s>"
     ind = 10
     for obs, action, reward in zip(recent_obs[-10:], recent_actions[-10:], recent_reward[-10:]):
         input_str += f" <extra_id_{ind}> {action} (+{int(reward*100)}) --> {obs} | "
         ind -= 1
     input_str += " </s> " 
 
-    input_str += "Current environment: " + look + " </s> " 
-    input_str += "Current inventory: " + inventory + " </s> "
-    
+    input_str += f"Current environment: {look} </s> "
+    input_str += f"Current inventory: {inventory} </s> "
+
     if places:
         input_str +=  "Visited rooms: " + ", ".join(places)  + ' </s> '
-    
+
     # current_objs = []
     # add_current_objects(task_id=-1, look=look, objects=current_objs, limit=20)
     # if current_objs:
     #     input_str += "Seen current_objs: " + ", ".join(current_objs) + ' </s> '
-        
+
     input_str += ' What action should you do next? </s> '
-    
+
     input_str = sanitizeStr(input_str)
     input_str = input_str.replace("(that is open)", "")
-    input_str = input_str.replace("(containing nothing)", "") 
+    input_str = input_str.replace("(containing nothing)", "")
     label = sanitizeStr(label)
     return input_str, label
 
@@ -256,12 +251,12 @@ def compose_instance_v3(mode, step_id, task_desc, returns_to_go, curr_action,
     label = curr_action
 
     # ============================================================= #
-        
-    input_str = task_desc + f" </s> Time: {step_id}; Score: {int(recent_scores[-1]*100)}; </s> "
-    
+
+    input_str = f"{task_desc} </s> Time: {step_id}; Score: {int(recent_scores[-1] * 100)}; </s> "
+
     # if returns_to_go != None :
     #     input_str += 'Reward:' + str(returns_to_go) + + " </s> "
-     
+
     # input_str += 'The previous action: ' + prev_action + ' </s> '
     # input_str += "The previous observation: " + prev_obs + ' </s> ' 
 
@@ -269,31 +264,31 @@ def compose_instance_v3(mode, step_id, task_desc, returns_to_go, curr_action,
     #     input_str += 'Current observation: ' + curr_obs + " </s> "
     # else:
     #     input_str += 'Current observation: the same as current environment. </s> '
-    
+
     # if recent_actions:
     #     input_str += "Recent actions: " + ", ".join(recent_actions) + ' </s> '     
     assert len(recent_obs) >= 1
-    input_str += "Action history: </s>" 
+    input_str += "Action history: </s>"
     ind = 10
     for obs, action, reward in zip(recent_obs[-5:], recent_actions[-5:], recent_reward[-5:]):
         input_str += f" <extra_id_{ind}> {action} (+{int(reward*100)}) --> {obs} | "
         ind -= 1
     input_str += " </s> " 
 
-    input_str += "Current environment: " + look + " </s> " 
-    input_str += "Current inventory: " + inventory + " </s> "
-    
+    input_str += f"Current environment: {look} </s> "
+    input_str += f"Current inventory: {inventory} </s> "
+
     if places:
         input_str +=  "Visited rooms: " + ", ".join(places)  + ' </s> '
-    
+
     if objects:
         input_str += "Seen objects: " + ", ".join(objects) + ' </s> '
-        
+
     input_str += ' What action should you do next? </s> '
-    
+
     input_str = sanitizeStr(input_str)
     input_str = input_str.replace("(that is open)", "")
-    input_str = input_str.replace("(containing nothing)", "") 
+    input_str = input_str.replace("(containing nothing)", "")
     label = sanitizeStr(label)
     return input_str, label
 
@@ -306,12 +301,12 @@ def compose_instance_v2(mode, step_id, task_desc, returns_to_go, curr_action,
     label = curr_action
 
     # ============================================================= #
-        
-    input_str = task_desc + f" </s> Time: {step_id}; Score: {int(recent_scores[-1]*100)}; </s> "
-    
+
+    input_str = f"{task_desc} </s> Time: {step_id}; Score: {int(recent_scores[-1] * 100)}; </s> "
+
     # if returns_to_go != None :
     #     input_str += 'Reward:' + str(returns_to_go) + + " </s> "
-     
+
     # input_str += 'The previous action: ' + prev_action + ' </s> '
     # input_str += "The previous observation: " + prev_obs + ' </s> ' 
 
@@ -319,31 +314,31 @@ def compose_instance_v2(mode, step_id, task_desc, returns_to_go, curr_action,
     #     input_str += 'Current observation: ' + curr_obs + " </s> "
     # else:
     #     input_str += 'Current observation: the same as current environment. </s> '
-    
+
     # if recent_actions:
     #     input_str += "Recent actions: " + ", ".join(recent_actions) + ' </s> '     
     assert len(recent_obs) >= 1
-    input_str += "Recent actions: " 
+    input_str += "Recent actions: "
     ind = 10
     for obs, action, reward in zip(recent_obs[-10:], recent_actions[-10:], recent_reward[-10:]):
         input_str += f"<extra_id_{ind}> {action} (+{int(reward*100)}) | "
         ind -= 1
     input_str += " </s> " 
 
-    input_str += "Current environment: " + look + " </s> " 
-    input_str += "Current inventory: " + inventory + " </s> "
-    
+    input_str += f"Current environment: {look} </s> "
+    input_str += f"Current inventory: {inventory} </s> "
+
     # if places:
     #     input_str +=  "Visited rooms: " + ", ".join(places)  + ' </s> '
-    
+
     if objects:
         input_str += "Seen objects: " + ", ".join(objects) + ' </s> '
-        
+
     input_str += ' What action should you do next? </s> '
-    
+
     input_str = sanitizeStr(input_str)
     input_str = input_str.replace("(that is open)", "")
-    input_str = input_str.replace("(containing nothing)", "") 
+    input_str = input_str.replace("(containing nothing)", "")
     label = sanitizeStr(label)
     return input_str, label
 
@@ -365,36 +360,36 @@ def compose_instance_v1(mode, step_id, task_desc, returns_to_go, curr_action,
         returns_to_go = None 
 
     label = curr_action
-       
-    
+
+
     # ============================================================= #
-        
-    input_str = task_desc + f" </s> Time: {step_id}  </s> "
-    
-    if returns_to_go != None :
-        input_str += 'Reward:' + str(returns_to_go) + + " </s> "
-     
-    input_str += 'The previous action: ' + prev_action + ' </s> '
-    input_str += "The previous observation: " + prev_obs + ' </s> ' 
+
+    input_str = f"{task_desc} </s> Time: {step_id}  </s> "
+
+    if returns_to_go != None:
+        input_str += f'Reward:{str(returns_to_go)}' + + " </s> "
+
+    input_str += f'The previous action: {prev_action} </s> '
+    input_str += f"The previous observation: {prev_obs} </s> "
     if curr_obs.strip() != look.strip():  
-        input_str += 'Current observation: ' + curr_obs + " </s> "
+        input_str += f'Current observation: {curr_obs} </s> '
     else:
         input_str += 'Current observation: the same as current environment. </s> '
-    input_str += "Current environment: " + look + " </s> " 
-    input_str += "Current inventory: " + inventory + " </s> "
-    
+    input_str += f"Current environment: {look} </s> "
+    input_str += f"Current inventory: {inventory} </s> "
+
     if places:
         input_str +=  "Visited rooms: " + ", ".join(places)  + ' </s> '
-    
+
     if objects:
         input_str += "Seen objects: " + ", ".join(objects) + ' </s> '
-        
+
     input_str += ' </s> '
     if recent_actions:
-        input_str += "Recent actions: " + ", ".join(recent_actions) + ' </s> '         
+        input_str += "Recent actions: " + ", ".join(recent_actions) + ' </s> '
     input_str = sanitizeStr(input_str)
     input_str = input_str.replace("(that is open)", "")
-    input_str = input_str.replace("(containing nothing)", "") 
+    input_str = input_str.replace("(containing nothing)", "")
     label = sanitizeStr(label)
     return input_str, label
 
@@ -417,34 +412,31 @@ def compose_instance_v1_1(mode, step_id, task_desc, returns_to_go, curr_action,
         returns_to_go = None 
 
     label = curr_action
-       
-    
+
+
     # ============================================================= #
-        
-    input_str = task_desc + f" </s> Time: {step_id}  </s> "
-    
-    if returns_to_go != None :
-        input_str += 'Reward:' + str(returns_to_go) + + " </s> "
-     
-    input_str += 'The previous action: ' + prev_action + ' </s> '
-    if step_id == 1:
-        prev_obs = "N/A"
-    else:
-        prev_obs = curr_obs
-    input_str += "The previous observation: " + prev_obs + ' </s> '  # TODO: it was actually a bug but it worked great....
+
+    input_str = f"{task_desc} </s> Time: {step_id}  </s> "
+
+    if returns_to_go != None:
+        input_str += f'Reward:{str(returns_to_go)}' + + " </s> "
+
+    input_str += f'The previous action: {prev_action} </s> '
+    prev_obs = "N/A" if step_id == 1 else curr_obs
+    input_str += f"The previous observation: {prev_obs} </s> "
     if curr_obs.strip() != look.strip():  
-        input_str += 'Current observation: ' + curr_obs + " </s> "
+        input_str += f'Current observation: {curr_obs} </s> '
     else:
         input_str += 'Current observation: the same as current environment. </s> '
-    input_str += "Current environment: " + look + " </s> " 
-    input_str += "Current inventory: " + inventory + " </s> "
-    
+    input_str += f"Current environment: {look} </s> "
+    input_str += f"Current inventory: {inventory} </s> "
+
     if places:
         input_str +=  "Visited rooms: " + ", ".join(places)  + ' </s> '
-    
+
     if objects:
         input_str += "Seen objects: " + ", ".join(objects) + ' </s> '
-        
+
     input_str += ' </s> '
 
     if recent_actions[0] == "look around":
@@ -453,26 +445,22 @@ def compose_instance_v1_1(mode, step_id, task_desc, returns_to_go, curr_action,
         input_str += "Recent actions: " + ", ".join(recent_actions[-10:]) + ' </s> ' #TODO: 5 or 10? I forgot
     input_str = sanitizeStr(input_str)
     input_str = input_str.replace("(that is open)", "")
-    input_str = input_str.replace("(containing nothing)", "") 
+    input_str = input_str.replace("(containing nothing)", "")
     label = sanitizeStr(label)
     return input_str, label
 
 
 
 def action_conversion(action, pattern, format_str, num_args):
-        if num_args == 0:
-            if action.strip() == pattern.strip():
-                return format_str
-            else:
-                return None
-        match = re.search(pattern, action)
-        if match:
-            if num_args == 1:
-                formatted_action = format_str.format(match.group(1))
-            elif num_args == 2:
-                formatted_action = format_str.format(match.group(1), match.group(2))
-            return formatted_action
-        return None 
+    if num_args == 0:
+        return format_str if action.strip() == pattern.strip() else None
+    if match := re.search(pattern, action):
+        if num_args == 1:
+            formatted_action = format_str.format(match[1])
+        elif num_args == 2:
+            formatted_action = format_str.format(match[1], match[2])
+        return formatted_action
+    return None 
 
 def recover_action(formalized_action):
     conversion_dict = [
@@ -512,10 +500,9 @@ def recover_action(formalized_action):
         {"format_str": "drop {} in {}", "pattern": r"^DROP\((.+), (.+)\)", "num_args": 2},
         {"format_str": "drop {}", "pattern": r"^DROP\((.+)\)", "num_args": 1},
     ] 
-     
+
     for item in conversion_dict:
-        formal_action = action_conversion(formalized_action, **item)
-        if formal_action:
+        if formal_action := action_conversion(formalized_action, **item):
             return formal_action
     print(f"{formalized_action} cannot be matched with any patterns.")
     return None  
@@ -550,12 +537,11 @@ def formalize_action(action):
         {"pattern": r"^mix (.+)", "format_str": "MIX({})", "num_args": 1},
         {"pattern": r"^drop (.+) in (.+)", "format_str": "DROP({}, {})", "num_args": 2},
         {"pattern": r"^drop (.+)", "format_str": "DROP({})", "num_args": 1},
-    ]     
+    ]
     for item in conversion_dict:
-        formal_action = action_conversion(action, **item)
-        if formal_action:
+        if formal_action := action_conversion(action, **item):
             return formal_action
-    
+
     return None  
 
 

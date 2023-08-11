@@ -1,4 +1,4 @@
-import json 
+import json
 from scienceworld import ScienceWorldEnv
 import os 
 
@@ -16,23 +16,21 @@ for _, curr_task in raw_data.items():
         second_index = taskName.index('-', taskName.index('-') + 1)
         taskName = taskName[second_index+1:]
         taskName = taskName.replace("(","")
-        taskName = taskName.replace(")","")  
+        taskName = taskName.replace(")","")
     taskName = taskName.replace("mendellian", "mendelian")
     # assert taskName in taskNames, taskName 
-    task_id = taskNames.index(taskName) 
-    all_samples = curr_task['goldActionSequences'] 
+    task_id = taskNames.index(taskName)
+    all_samples = curr_task['goldActionSequences']
     test_samples = [s for s in all_samples if s["fold"] == "test"][:10]
     # print(task_id, taskName, len(test_samples), test_samples[0]['variationIdx'], test_samples[-1]['variationIdx'])
     start = test_samples[0]['variationIdx']
     end = test_samples[-1]['variationIdx']
- 
-    
+
+
     all_vars = {}
     for var in test_samples:
         var_id = var["variationIdx"]
-        all_vars[str(var_id)] = {}
-        all_vars[str(var_id)]["episodeIdx"] = var_id
-        all_vars[str(var_id)]["history"] = var
+        all_vars[str(var_id)] = {"episodeIdx": var_id, "history": var}
         history = all_vars[str(var_id)]["history"]["path"]
         del all_vars[str(var_id)]["history"]["path"]
         all_vars[str(var_id)]["history"]["taskName"] = taskName

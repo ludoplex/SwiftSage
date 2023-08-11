@@ -27,11 +27,8 @@ def get_file_name(args, task_num):
 
         # Make path if it doesn't exist
         if not os.path.exists(args['output_path']):
-            os.makedirs(args["output_path"]) 
-    # filenameOutPrefix = args["output_path"] + "transformer-" + args["mode"] + "-eval-" + str(args["lm_path"].split('/')[-1]) + "-task" + str(task_num)
-    filenameOutPrefixSeed = args["output_path"] + "task" + str(task_num)
-
-    return filenameOutPrefixSeed
+            os.makedirs(args["output_path"])
+    return args["output_path"] + "task" + str(task_num)
   
 
 
@@ -49,7 +46,7 @@ def eval(args, task_num, logger):
         compose_instance = compose_instance_v4
     elif args["compose_mode"] == "v5":
         compose_instance = compose_instance_v5
-    
+
 
     # Initialize environment
     # env = ScienceWorldEnv("", args["jar_path"], envStepLimit = args["env_step_limit"], threadNum = 0)
@@ -76,9 +73,9 @@ def eval(args, task_num, logger):
         recent_reward = [0.0]
         # recent_actions_without_open = []
         places = []
-        objects = [] 
+        objects = []
         # bad_words_ids = None
- 
+
         obs, info = env.reset()
 
         prev_obs = 'N/A'
@@ -95,8 +92,8 @@ def eval(args, task_num, logger):
         # however, the t5 model only generates the action "look around", which will result in a dead loop below
         # so the max_steps here is only used to avoid the model generating the same action forever
         max_steps = args["env_step_limit"] * 2
- 
- 
+
+
         while not done:
             input_str = ""
 
@@ -107,30 +104,30 @@ def eval(args, task_num, logger):
             # Note that the agent is allowed to know the score changes.
             returns_to_go = 1.0 - float(info['score']) * 0.01
             returns_to_go = round(returns_to_go, 2)
-            
+
 
             mode = args["mode"]
-            logger.info("Mode: " + mode)
+            logger.info(f"Mode: {mode}")
 
             input_str, _ = compose_instance(mode=mode, step_id=step+1, task_desc=task_description, returns_to_go=returns_to_go,
                                     curr_action=None, curr_obs=obs, inventory=info['inv'], look=info['look'], 
                                     prev_action=prev_action, prev_obs=prev_obs, objects=objects, places=places, 
                                     recent_actions=recent_actions, recent_obs=recent_obs, recent_scores=recent_scores, recent_reward=recent_reward) 
-            
+
             input_str = sanitizeStr(input_str)
-            logger.info("InputStr: " + input_str)
+            logger.info(f"InputStr: {input_str}")
             predStrs = get_model_output(args, input_str, tokenizer, lm_model, device, logger)
-            
+
             ############
             prev_obs = obs 
 
             if args["compose_mode"] == "v5":
                 predStrs = [recover_action(ps) for ps in predStrs]
                 predStrs = [ps for ps in predStrs if ps]
-            
+
 
             # Get valid actions at this point
-            action = findValidActionNew(predStrs, env, info['look'], recent_actions, sbert_model, logger) 
+            action = findValidActionNew(predStrs, env, info['look'], recent_actions, sbert_model, logger)
             obs, reward, done, info = env.step(action)
 
             if args["compose_mode"] == "v5":
@@ -141,31 +138,27 @@ def eval(args, task_num, logger):
             reward = score - last_score
             recent_reward.append(reward/100)
             recent_scores.append(score/100)
-            recent_actions.append(action) 
+            recent_actions.append(action)
             recent_obs.append(obs)
-            
+
             if score < 0:
                 # Our own solution for dealing with such cases
-                if args["no_stop"]:
-                    done = True
-                    score = last_score
-                else:
-                    done = True
-                    score = 0
+                score = last_score if args["no_stop"] else 0
+                done = True
             last_score = score
 
             #logger.info("Input string: " + str(input_str))
             logger.info(f"Variation: {variation}, Step: {step}, Action: {action}")
-            logger.info("Obs: " + sanitizeStr(obs))
+            logger.info(f"Obs: {sanitizeStr(obs)}")
             logger.info(f"Score: {score}")
             logger.info("")
 
             step += 1
             if (step >= max_steps) or done:
                 break
-  
 
-            logger.info("Recent Actions: " + str(recent_actions))
+
+            logger.info(f"Recent Actions: {recent_actions}")
 
             # Early stopping if we're in a loop
             if len(recent_actions) >= 5 and len(set(recent_actions[-5:])) == 2:
@@ -180,20 +173,18 @@ def eval(args, task_num, logger):
         scores.append(score)
 
         logger.info("Run completed...")
-        logger.info("Scores: " + str(scores))
- 
+        logger.info(f"Scores: {scores}")
+
         time.sleep(2)
 
     # Episodes are finished -- manually save any last histories still in the buffer
     env.saveRunHistoriesBufferIfFull(filenameOutPrefixSeed, maxPerFile=args["max_episode_per_file"], forceSave=True)
 
     avg = sum(scores) / len(scores)
-    logger.info("Average score: " + str(avg))
+    logger.info(f"Average score: {str(avg)}")
 
-    f = open(filenameOutPrefixSeed + "-score.txt", "a")
-    f.write("\n" + "Task name:" + taskName + "Scores: " + str(scores) + " Average score: " + str(avg) + " Args: " + str(args) + "\n")
-    f.close()
-
+    with open(f"{filenameOutPrefixSeed}-score.txt", "a") as f:
+        f.write("\n" + "Task name:" + taskName + "Scores: " + str(scores) + " Average score: " + str(avg) + " Args: " + str(args) + "\n")
     logger.info("Shutting down server...")
     # env.shutdown()
 
@@ -204,11 +195,11 @@ def eval(args, task_num, logger):
 def parse_args():
     parser = argparse.ArgumentParser()
     debug = False
+    parser.add_argument("--jar_path", type=str)
     if not debug:
-        parser.add_argument("--jar_path", type=str) 
         parser.add_argument("--task_nums", default="0")  # use comma to split 
         parser.add_argument("--env_step_limit", type=int, default=100)
-        parser.add_argument("--lm_path", default="lm_model") 
+        parser.add_argument("--lm_path", default="lm_model")
         parser.add_argument("--simplification_str", default="easy")
         parser.add_argument("--beams", type=int, default=16)
         parser.add_argument("--max_episode_per_file", type=int, default=9999)
@@ -223,10 +214,9 @@ def parse_args():
         parser.add_argument("--no_stop", action="store_true", default=False)
         parser.add_argument("--sbert", action="store_true", default=False)
     else:
-        parser.add_argument("--jar_path", type=str) 
         parser.add_argument("--task_nums", default="28")  # use comma to split 
         parser.add_argument("--env_step_limit", type=int, default=100)
-        parser.add_argument("--lm_path", default="fast_agent/model_ckpts/flan_large_0402/checkpoint-300") 
+        parser.add_argument("--lm_path", default="fast_agent/model_ckpts/flan_large_0402/checkpoint-300")
         parser.add_argument("--simplification_str", default="easy")
         parser.add_argument("--beams", type=int, default=5)
         parser.add_argument("--max_episode_per_file", type=int, default=9999)
@@ -242,8 +232,7 @@ def parse_args():
         parser.add_argument("--no_stop", action="store_true", default=True) 
 
     args = parser.parse_args()
-    params = vars(args)
-    return params
+    return vars(args)
 
 #
 #   Main
@@ -260,8 +249,7 @@ def init_logger(args, task_num, log_level=INFO):
     ch.setLevel(log_level)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    logging_dir = args["output_path"]
-    if logging_dir:
+    if logging_dir := args["output_path"]:
         os.makedirs(logging_dir, exist_ok=True)
         now = int(round(time.time() * 1000))
         timestr = time.strftime('%Y-%m-%d_%H-%M', time.localtime(now / 1000))

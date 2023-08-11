@@ -16,17 +16,14 @@ def greet(all_input):
     "The assistant gives helpful, detailed, and polite answers to the human's questions.\n\n"
     )
 
-    prompt = "### Human: "
-
-    inputs = tokenizer(header + prompt + all_input, return_tensors="pt")
+    inputs = tokenizer(f"{header}### Human: {all_input}", return_tensors="pt")
 
     sample = model.generate(input_ids=inputs['input_ids'].to(model.device), 
                             attention_mask=inputs['attention_mask'].to(model.device),
                             do_sample=True, max_new_tokens=2048, top_k=100, eos_token_id=50256)
     output = tokenizer.decode(sample[0])
     prefix = "### Assistant:"
-    result  = output[output.strip().index(prefix)+len(prefix):]
-    return result
+    return output[output.strip().index(prefix)+len(prefix):]
 
 demo = gr.Interface(fn=greet, inputs="text", outputs="text")
     

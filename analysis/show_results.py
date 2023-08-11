@@ -36,18 +36,14 @@ def get_analysis(r, cut_off=10):
     return avg_score, avg_score_v2, taskName
 
 def add_reuslts(log_folder,results, model_names, model_name=None):
-    json_files = glob.glob(log_folder + "/*.json")
+    json_files = glob.glob(f"{log_folder}/*.json")
     for jf in json_files:
         if jf.endswith("demos.json"):
             continue
         with open(jf) as f:
             r = json.load(f)
         task_start = jf.index("task")
-        if "seed" in jf:
-            task_end = jf.index("-seed")
-        else:
-            task_end = jf.index("-", task_start)
-            # print(jf)
+        task_end = jf.index("-seed") if "seed" in jf else jf.index("-", task_start)
         task_num = jf[task_start+4:task_end]
         # print(task_num)
         if task_num not in results:
@@ -63,9 +59,9 @@ def add_reuslts(log_folder,results, model_names, model_name=None):
         avg_score_mini, avg_score_mini_v2, _ = get_analysis(r, cut_off=3)
         results[task_num][model_name] = avg_score, avg_score_v2
         if "fast only" not in model_name:
-            results[task_num][model_name+"(mini)"] = avg_score_mini, avg_score_mini_v2
+            results[task_num][f"{model_name}(mini)"] = avg_score_mini, avg_score_mini_v2
 
-        
+
         # taskName
         taskid_to_name[task_num] = taskName
 
@@ -145,7 +141,7 @@ add_reuslts("fast_slow_logs/final_merge_gpt-3.5-turbo/",results, model_names, "O
 
 
 # print(results)
-cols = ["trid", "tid", "task_name"] + model_names 
+cols = ["trid", "tid", "task_name"] + model_names
 rows = []
 rows_v2 = []
 for i in range(30):
@@ -187,12 +183,15 @@ for j in range(len(cols)-3):
     avg_s = np.mean([s for s in scores_v2 if s >= 0])
     avg_scores_v2.append("{:.2f}".format(avg_s))
 
- 
-rows.sort(key=lambda x: "0"+x[0] if x[0].index("-")<=1 else x[0])
 
-rows.append(["-"*5]*2 + ["-"*5]*len(rows[0]))
-rows.append(["-", "-" , "all tasks (avg)"] + avg_scores)
+rows.sort(key=lambda x: f"0{x[0]}" if x[0].index("-")<=1 else x[0])
 
+rows.extend(
+    (
+        ["-" * 5] * 2 + ["-" * 5] * len(rows[0]),
+        ["-", "-", "all tasks (avg)"] + avg_scores,
+    )
+)
 cols = [c.replace("logs/","") for c in cols]
 # rows.append(["-", "-" , "all tasks (std)"] + std_scores)
 # rows.append(["-", "-" , "all tasks (avg, strict)"] + avg_scores_v2)

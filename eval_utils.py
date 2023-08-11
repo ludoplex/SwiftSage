@@ -53,10 +53,7 @@ def is_action_failed(obs):
     return obs == "No known action matches that input." or "can't" in obs or "not" in obs or "doesn't" in obs
 
 def find_non_alpha_index(s):
-    for i, c in enumerate(s):
-        if not c.isalpha() and c != ' ':
-            return i
-    return -1  # if no non-alpha character found 
+    return next((i for i, c in enumerate(s) if not c.isalpha() and c != ' '), -1) 
 
 def clean_look(look, version="not_lite"):
     
@@ -88,12 +85,9 @@ def clean_look(look, version="not_lite"):
 
  
 def get_current_room(look):
-    global rooms 
+    global rooms
     first_sent = look.split(".")[0]
-    for r in rooms:
-        if "called the "+ r in first_sent:
-            return r  
-    return None 
+    return next((r for r in rooms if f"called the {r}" in first_sent), None) 
 
 
 def load_model(args, device):
@@ -125,9 +119,9 @@ def load_variation(env, args, task_num, logger):
     if (args["set"] == "train"):
         variations = list(env.getVariationsTrain())
         if task_num == 26: 
-            variations = variations[:int(len(variations)/10)]
+            variations = variations[:len(variations) // 10]
         elif task_num == 29: 
-            variations = variations[:int(len(variations)/2)]
+            variations = variations[:len(variations) // 2]
     elif (args["set"] == "test"):
         variations = list(env.getVariationsTest())
         if args["cut_off"]:
@@ -142,21 +136,21 @@ def load_variation(env, args, task_num, logger):
         variations = list(env.getVariationsTest()) 
         # random.seed(1)
         # random.shuffle(variations)
-        variations = variations[3:10] 
+        variations = variations[3:10]
     elif (args["set"] == "test_mini"):
         variations = list(env.getVariationsTest()) 
         # random.seed(1)
         # random.shuffle(variations)
-        variations = variations[:3] 
+        variations = variations[:3]
     elif (args["set"] == "test_mini_mini"):
         variations = list(env.getVariationsTest()) 
         # random.seed(1)
         # random.shuffle(variations)
-        variations = variations[:1] 
+        variations = variations[:1]
     else:
         logger.info("ERROR: Unknown set to evaluate on (" + str(args["set"]) + ")")
         exit(1)
- 
+
     logger.info(variations)
     return variations
 
@@ -165,14 +159,14 @@ def load_variation(env, args, task_num, logger):
 
 def findValidActionNew(predictions, env, look, recent_actions, sbert_model, logger, k=5):
     global rooms
-    valid_open_door = ["open door to " + i for i in rooms] 
-    invalid_focus = ["focus on "+x for x in ["agent", "air"]+rooms]
+    valid_open_door = [f"open door to {i}" for i in rooms]
+    invalid_focus = [f"focus on {x}" for x in ["agent", "air"]+rooms]
     validActions = set(env.getValidActionObjectCombinations())
     validActions.update(valid_open_door)
     validActions.difference_update(invalid_focus)
 
     inventory = env.inventory().lower()
-    
+
     validActions.difference_update(recent_actions[-3:]) 
 
     for va in list(validActions):
@@ -182,13 +176,10 @@ def findValidActionNew(predictions, env, look, recent_actions, sbert_model, logg
         if va.startswith("focus on"): 
             pattern = re.compile(r"\b(?:focus|on|in|to)\b", re.IGNORECASE)
             used_objs = pattern.sub("", va).split(" ")
-            valid = True
-            for obj in used_objs:
-                if obj not in look + " " + inventory:
-                    valid = False
+            valid = all(obj in f"{look} {inventory}" for obj in used_objs)
             if not valid:
                 validActions.remove(va)
-    
+
 
     # 1) if acton in top k is valid, choose it
     found_valid_in_top = False
@@ -200,13 +191,12 @@ def findValidActionNew(predictions, env, look, recent_actions, sbert_model, logg
             action = pred.strip()
             break
     if found_valid_in_top:
-        return action 
-    else:
-        logger.info(f"No valid action found in top k={k} predictions.")
-        validActions = list(validActions)
-        validActions.sort(key=lambda x: len(x))
-        logger.info("Valid Predictions: "+ str(validActions)) 
- 
+        return action
+    logger.info(f"No valid action found in top k={k} predictions.")
+    validActions = list(validActions)
+    validActions.sort(key=lambda x: len(x))
+    logger.info(f"Valid Predictions: {validActions}") 
+     
 
     # 2) else, find most similar action
 
@@ -248,7 +238,7 @@ def findValidActionNew(predictions, env, look, recent_actions, sbert_model, logg
                 topAction = validAction
                 topValue = len(intersection)
 
-        logger.info("TOP VALID ACTION: " + topAction)
+        logger.info(f"TOP VALID ACTION: {topAction}")
         # Sanitize top action
         topAction = re.sub(r'[^A-Za-z0-9 ]+', '', topAction)
         action = topAction
@@ -257,16 +247,16 @@ def findValidActionNew(predictions, env, look, recent_actions, sbert_model, logg
 
 def getFilteredValidActions(env, look, filter=True, task_id=None, task_desc=None):
     global rooms
-    valid_open_door = ["open door to " + i for i in rooms] 
-    invalid_focus = ["focus on "+x for x in ["agent", "air"]+rooms]
+    valid_open_door = [f"open door to {i}" for i in rooms]
+    invalid_focus = [f"focus on {x}" for x in ["agent", "air"]+rooms]
     validActions = set(env.getValidActionObjectCombinations())
     validActions.update(valid_open_door)
     validActions.difference_update(invalid_focus)
 
     inventory = env.inventory()
-    
+
     validActions.add("wait")
-    validActions.add("wait1") 
+    validActions.add("wait1")
     if task_id is not None and task_desc is not None: 
         if task_id not in [5,6,7,8,17,18,19,20]:
             for va in list(validActions):
@@ -288,7 +278,7 @@ def getFilteredValidActions(env, look, filter=True, task_id=None, task_desc=None
         if not va.startswith("mix"):
             continue
         container_words = ["cup", "bowl", "metal pot", "jug"]
-        if not any(["mix" + c for c in container_words]):
+        if not any(f"mix{c}" for c in container_words):
             validActions.remove(va)
     if not filter:
         return validActions
@@ -321,15 +311,9 @@ def sbert_search(action_list, validActions, sbert_model, logger, k=1, N=1, retur
     #     logger.info("\t\t - "+validActions[ti])
     if N == 1:
         action = validActions[top_indices[0]]
-        score = sum_similarities[top_indices[0]]
-        if return_scores:
-            return action, score
-        return action
+        return (action, sum_similarities[top_indices[0]]) if return_scores else action
     else:
-        action_list = []
-        for i in range(N):
-            action = validActions[top_indices[i]]
-            action_list.append(action)
+        action_list = [validActions[top_indices[i]] for i in range(N)]
         return action_list
 
 
@@ -364,17 +348,17 @@ def try_to_replace(action, validActions, look=None, inventory=None):
     if action.startswith("wait"):
         return "wait"
     if action in validActions:
-        return action 
-    try_action = action.replace("green house", "greenhouse") 
+        return action
+    try_action = action.replace("green house", "greenhouse")
     try_action = try_action.replace("adult", "adult adult")
     try_action = try_action.replace("baby", "baby baby")
     if try_action in validActions:
-        return try_action 
+        return try_action
     if action.startswith("go to"):
         if action.replace("go to", "teleport to") in validActions:
             return action.replace("go to", "teleport to")
         elif action.replace("go to", "open door to") in validActions:
-            return action.replace("go to", "open door to") 
+            return action.replace("go to", "open door to")
     if action.startswith("pick up"):
         action = find_object(action, look)
         if action in validActions:
@@ -390,13 +374,13 @@ def try_to_replace(action, validActions, look=None, inventory=None):
         pattern = r"move (.*?) to"
         obj = re.search(pattern, action)
         if obj is None:
-            return action 
+            return action
         else:
-            obj = obj.group(1)
+            obj = obj[1]
         todo = action.replace(obj, "substance in inventory")
         if obj in inventory and todo in validActions:
             return todo
-    
+
 
     split_string = action.rsplit(" in ", 1) # Split the string from the last occurrence of " in "
     if split_string[0] in validActions:
@@ -407,9 +391,9 @@ def try_to_replace(action, validActions, look=None, inventory=None):
         action = clean_obj_name(action)
         if action in validActions:
             return action 
-        
+
     for r in rooms:
-        action = action.replace("in " + r, "")
+        action = action.replace(f"in {r}", "")
     return action 
         
 
@@ -440,14 +424,14 @@ def findValidActionWithSystem2(predictions, env, task_id, task_description, look
             if pred.strip() in validActions:
                 found_valid_in_top = True
                 break
-        
-        
-         
-        logger.info(f"found_valid_in_top={found_valid_in_top} ({action}) ") 
-        
 
-        
-        
+
+
+        logger.info(f"found_valid_in_top={found_valid_in_top} ({action}) ") 
+
+
+
+
         if found_valid_in_top and len(recent_actions) < 10:
             # Use fast agent in the first 10 steps
             enable_system2 = False 
@@ -459,11 +443,11 @@ def findValidActionWithSystem2(predictions, env, task_id, task_description, look
         if found_valid_in_top and sum(recent_reward[-5:]) > 0: 
             logger.info("Recent scores has increased in recent 5 timesteps. Not doing System 2.")
             enable_system2 = False
-        
+
         if found_valid_in_top and action not in recent_actions[-3:]:
             logger.info("No such actions in recent 3 timesteps. Not doing System 2.")
             enable_system2 = False 
-        
+
         if found_valid_in_top and not enable_system2 and not force_system_2:
             assert action is not None 
             logger.info("Using Fast System output.")
@@ -482,18 +466,14 @@ def findValidActionWithSystem2(predictions, env, task_id, task_description, look
 
 
     assert enable_system2  or force_system_2
-    if found_valid_in_top:
-        fast_action = action
-    else:
-        fast_action = None
-    
-    logger.info("Now, start using System 2: OpenAI for reasoning")  
+    fast_action = action if found_valid_in_top else None
+    logger.info("Now, start using System 2: OpenAI for reasoning")
     real_action_list = []
     try:
         enc = tiktoken.encoding_for_model(gpt_version)
 
         demos = demo_data[str(task_id)]
-        
+
         prompt_to_plan = compose_prompt_to_plan(demos, useful_focus_on, task_description, recent_actions, recent_obs, recent_locs, recent_looks, failed_messages, look, inventory, fast_action, version="full")  
         if gpt_version == "gpt-3.5-turbo":
             length = len(enc.encode(prompt_to_plan))
@@ -509,7 +489,7 @@ def findValidActionWithSystem2(predictions, env, task_id, task_description, look
             response_plan = response["choices"][0]["message"]["content"]
         else:
             response_plan = local_llm.generate(prompt_to_plan, logger=logger.info)
-            
+
         logger.info("-"*30 + "response_plan" + "-"*30)
         logger.info("\n"+response_plan)
         logger.info("-"*35 + "-"*35) 
@@ -529,7 +509,7 @@ def findValidActionWithSystem2(predictions, env, task_id, task_description, look
             response_next_actions = response["choices"][0]["message"]["content"]
         else:
             response_next_actions = local_llm.generate(prompt_to_next_actions)
-        
+
         def post_process(response_next_actions):
             logger.info("-"*30 + "response_next_actions" + "-"*30)
             logger.info("\n"+response_next_actions)
@@ -570,8 +550,8 @@ def findValidActionWithSystem2(predictions, env, task_id, task_description, look
             return real_action_list, guess_obs_list
         real_action_list, guess_obs_list = post_process(response_next_actions)
     except Exception as e:
-        logger.info("OpenAI error:" + str(e))
-        
+        logger.info(f"OpenAI error:{str(e)}")
+
     if len(real_action_list) == 0:
         logger.info("Error from System 2. Try again.")
         prompt_again = []
@@ -590,7 +570,7 @@ def findValidActionWithSystem2(predictions, env, task_id, task_description, look
                             {"role": "assistant", "content": response_next_actions},
                             {"role": "user", "content": prompt_again},
                             ], n = 1, temperature=0, top_p=1)
-            
+
             response_next_actions_v2 = response_v2["choices"][0]["message"]["content"]
         else:
             # TODO: llm.generate()
@@ -606,37 +586,36 @@ def findValidActionWithSystem2(predictions, env, task_id, task_description, look
         # if action is None:
         action_list = [try_to_replace(predictions[0], validActions, look, inventory)]
         action = sbert_search(action_list, list(validActions), sbert_model, logger)
-        return False, action 
+        return False, action
     # TODO: select the action 
     return True, (real_action_list, guess_obs_list)
 
 def compose_prompt_to_nextactions(demos, task_desc, recent_actions, recent_obs, recent_locs, failed_messages, look, inventory, response_next_subgoal, useful_focus_on, fast_action=None, k=10, version="gpt-4"):
 
-    prompt_to_next_actions = []
-    prompt_to_next_actions.append("You are an experienced teacher who always guide students to complete the science experiments. Now let's do science experiments with a sequence of actions.")
-    prompt_to_next_actions.append("In this environment, there are a few locations: art studio, workshop, kitchen, living room, bedroom, bathroom, foundry, greenhouse, outside, and a hallway connecting them.")
-        
-    prompt_to_next_actions.append("You have done a few science experiments successfully and below are the action history of your experiments with similar tasks.")
-
-    prompt_to_next_actions.append("Example task 1: "+ demos[0][0])
+    prompt_to_next_actions = [
+        "You are an experienced teacher who always guide students to complete the science experiments. Now let's do science experiments with a sequence of actions.",
+        "In this environment, there are a few locations: art studio, workshop, kitchen, living room, bedroom, bathroom, foundry, greenhouse, outside, and a hallway connecting them.",
+        "You have done a few science experiments successfully and below are the action history of your experiments with similar tasks.",
+        f"Example task 1: {demos[0][0]}",
+    ]
     prompt_to_next_actions += demos[0][1:]
     if len(demos) >= 2:
-        prompt_to_next_actions.append("Example task 2: "+ demos[1][0])
+        prompt_to_next_actions.append(f"Example task 2: {demos[1][0]}")
         prompt_to_next_actions += demos[1][1:]
     # prompt_to_next_actions += ["- Action: "+ a for a in demos[1][1:]]
 
 
     prompt_to_next_actions.append("In a new science experiment that is similar to the above two, " + task_desc.replace("Your", "my"))
-    
+
     # prompt_to_next_actions.append("Given the above completed subgoals, what should be your next subgoal to complete for finishing the task?")
-    
+
     prompt_to_next_actions.append(f"My previous {k} actions and observations are as follows:")
 
     recent_actions, recent_obs, _, _, recent_locs = clean_history(recent_actions, recent_obs, [-1]*len(recent_actions), [-1]*len(recent_actions), recent_locs)
-        
+
 
     history = []
-    repeat = 0    
+    repeat = 0
     for ind, (l, a, o) in enumerate(zip(recent_locs[:], recent_actions[:], recent_obs[:])):
         if o == "N/A":
             continue 
@@ -651,7 +630,7 @@ def compose_prompt_to_nextactions(demos, task_desc, recent_actions, recent_obs, 
         if ind+1 < len(recent_actions) and a in recent_actions[max(0, ind-5):ind] and a in recent_actions[ind+1:min(len(recent_actions), ind+5)]:
             repeat += 1
             continue 
-        
+
         history.append(to_add) 
         if repeat > 0:
             history.append(f"Repeat the above action for {repeat} times.")             
@@ -679,9 +658,11 @@ def compose_prompt_to_nextactions(demos, task_desc, recent_actions, recent_obs, 
         prompt_to_next_actions.append("There are some error messages about my previous actions:")
         prompt_to_next_actions += failed_messages
     prompt_to_next_actions.append("I asked my teacher for advice and the teacher told me these advice:")
-    prompt_to_next_actions.append(response_next_subgoal.replace("Question", "Answer").replace("Answer", "Advice")) 
+    prompt_to_next_actions.append(response_next_subgoal.replace("Question", "Answer").replace("Answer", "Advice"))
     prompt_to_next_actions.append("")
-    prompt_to_next_actions.append("In current environment: " + clean_look(look) + "\n" + inventory)
+    prompt_to_next_actions.append(
+        f"In current environment: {clean_look(look)}" + "\n" + inventory
+    )
     prompt_to_next_actions.append("What should be my next actions to complete the next subgoal in the current environment? ")
     prompt_to_next_actions.append("If any of the suggested next subgoals need knowledge to make decisions (e.g., determining or comparing the properties of objects and animals), please do that for me.")
     prompt_to_next_actions.append("The ONLY allowed action types are:")
@@ -695,9 +676,9 @@ def compose_prompt_to_nextactions(demos, task_desc, recent_actions, recent_obs, 
     prompt_to_next_actions.append(f"Important! You can only use FOCUS actions on these items: {', '.join(to_focus)} . ") # (Hint: {','.join(to_focus_v2)})
     prompt_to_next_actions.append("You cannot FOCUS on any other things. Please only use FOCUS as required by the task description. Also, please FOCUS more directly, try not to focus on the container.")
 
-    prompt_to_next_actions.append("Please use the above mentioned action types to convert the unfinished subgoal to a short sequence of concrete actions.  DO NOT USER OTHER TYPES OF ACTIONS. Follow the report of the two example tasks shown to you previously.")    
+    prompt_to_next_actions.append("Please use the above mentioned action types to convert the unfinished subgoal to a short sequence of concrete actions.  DO NOT USER OTHER TYPES OF ACTIONS. Follow the report of the two example tasks shown to you previously.")
     prompt_to_next_actions.append("Please do not try to look for books or computers to look up information. You will need to use your own commonsense knowledge to make decisions (e.g., determining properties of objects and animals).")
-    prompt_to_next_actions.append("Note that I can only do actions with available objects in the current location or inventory!!") 
+    prompt_to_next_actions.append("Note that I can only do actions with available objects in the current location or inventory!!")
     prompt_to_next_actions.append("Please use the below format to organize the response.")
     prompt_to_next_actions.append("Action 1: [...] -->  \n Action 2: [...] --> \n ...")
     return "\n".join(prompt_to_next_actions)
@@ -706,7 +687,7 @@ def compose_prompt_to_nextactions(demos, task_desc, recent_actions, recent_obs, 
 def compose_prompt_to_plan(demos, useful_focus_on, task_desc, recent_actions, recent_obs, recent_locs, recent_looks, failed_messages, look, inventory, fast_action, version="full"):
     clean_obs = []
     assert len(recent_obs) == len(recent_locs)
-    repeat = 0 
+    repeat = 0
     for i, obs in enumerate(recent_obs[1:]):
         # if obs.startswith("This room is called"):
         #     end_index = obs.index("In it")
@@ -718,36 +699,36 @@ def compose_prompt_to_plan(demos, useful_focus_on, task_desc, recent_actions, re
         # if obs.startswith("a substance called"): 
         if f"In {recent_locs[i+1]}, {obs}" in clean_obs:
             continue
-        
+
         if recent_actions[i+1] in recent_actions[i+1-5:i+1] and recent_actions[i+1] in recent_actions[i+2:i+2+5]:
             repeat += 1
             continue
         if "move to the" in obs:
             clean_obs.append(f"{obs}")
+        elif version == "lite":
+            clean_obs.append(f"In {recent_locs[i+1]}, {obs}")
         else:
-            if version == "lite":
-                clean_obs.append(f"In {recent_locs[i+1]}, {obs}")
-            else:
-                clean_obs.append(f"In {recent_locs[i+1]}, {recent_actions[i+1]} --> {obs}")
+            clean_obs.append(f"In {recent_locs[i+1]}, {recent_actions[i+1]} --> {obs}")
 
         if repeat > 0: 
             clean_obs.append(f"Repeat the above {repeat} times.")        
             repeat = 0
-    final_obs = []
-    for i, co in enumerate(clean_obs):
-        if i+1 < len(clean_obs) and "move to the" in clean_obs[i] and "move to the" in clean_obs[i+1]:
-            continue
-        final_obs.append(co.replace("a substance called", "there is a"))
+    final_obs = [
+        co.replace("a substance called", "there is a")
+        for i, co in enumerate(clean_obs)
+        if i + 1 >= len(clean_obs)
+        or "move to the" not in clean_obs[i]
+        or "move to the" not in clean_obs[i + 1]
+    ]
     prev_obs = [f"- {j+1}. {o}" for j, o in enumerate(final_obs)]
 
-    
-    prompt_to_plan  = []
 
-    prompt_to_plan.append("You are an experienced teacher who always guides students to complete the science experiments by giving executable advice and instructions with world knowledge.")
+    prompt_to_plan = [
+        "You are an experienced teacher who always guides students to complete the science experiments by giving executable advice and instructions with world knowledge.",
+        "You have done a science experiment successfully and below is the action history of your experiment.",
+        f"Example task: {demos[0][0]}",
+    ]
 
-    prompt_to_plan.append("You have done a science experiment successfully and below is the action history of your experiment.")
-
-    prompt_to_plan.append("Example task: "+ demos[0][0])
     clean_actions = []
     for history in demos[0][1:]:
         if "Action: " not in history:
@@ -760,9 +741,14 @@ def compose_prompt_to_plan(demos, useful_focus_on, task_desc, recent_actions, re
             clean_actions.append(history[:start_ind] + action + history[end_ind:])
     prompt_to_plan += clean_actions
 
-    prompt_to_plan.append("In a new science experiment that is similar to the above one, " + task_desc.replace("Your", "my")) 
-    prompt_to_plan.append("In this environment, there are a few rooms: art studio, workshop, kitchen, living room, bedroom, bathroom, foundry, greenhouse, outside, and a hallway connecting them.")
-    prompt_to_plan.append("To complete this task, I have done some actions and the observations are listed here:")
+    prompt_to_plan.extend(
+        (
+            "In a new science experiment that is similar to the above one, "
+            + task_desc.replace("Your", "my"),
+            "In this environment, there are a few rooms: art studio, workshop, kitchen, living room, bedroom, bathroom, foundry, greenhouse, outside, and a hallway connecting them.",
+            "To complete this task, I have done some actions and the observations are listed here:",
+        )
+    )
     if version == "lite":
         prev_obs = prev_obs[-15:]
     prompt_to_plan += prev_obs
@@ -773,7 +759,7 @@ def compose_prompt_to_plan(demos, useful_focus_on, task_desc, recent_actions, re
         for location, look_round in recent_looks.items():
             if location != recent_locs[-1]:
                 prompt_to_plan.append(f"In {location}: " + clean_look(look_round, version="lite"))
-    prompt_to_plan.append("* Current location *: " + clean_look(look)) # + look.replace(" egg", " ").replace(" adult ", " ").replace(" baby ", " ")
+    prompt_to_plan.append(f"* Current location *: {clean_look(look)}")
     prompt_to_plan.append(inventory.replace("Your ", "My "))
     if useful_focus_on:
         prompt_to_plan.append("Importantly, I have FOCUS on these things already: " + ", ".join([fo.replace("focus on", "") for fo in  useful_focus_on]))
@@ -794,14 +780,15 @@ def compose_prompt_to_plan(demos, useful_focus_on, task_desc, recent_actions, re
                           " If so, which rooms are they likely to be? " + \
                           "Note that some of your suggested items might not exist in the rooms. In that case, let's try to use the similar ones in the environment." + \
                           " Note that I cannot do actions without them if they are not collected yet. ")
-   
+
 
     pattern = r"focus on\s+(\b\w+\b(\s+\b\w+\b)*)"
     matches = re.findall(pattern, task_desc)
     to_focus = [match[0].replace("the ", " ").strip() for match in matches]
 
-    prompt_to_plan.append("Question 3: To most efficiently complete the task, what will be the important subgoals to finish? Please list up to five subgoals." + \
-                          f" Importantly, please include the subgoals about 'focus on' as required in the task description. Remember that it is ONLY possible focus on these items: {', '.join(to_focus)}! You should NOT focus on other things!! If you list a subgoal of focusing on, make sure that is mentioned and required by the task.")
+    prompt_to_plan.append(
+        f"Question 3: To most efficiently complete the task, what will be the important subgoals to finish? Please list up to five subgoals. Importantly, please include the subgoals about 'focus on' as required in the task description. Remember that it is ONLY possible focus on these items: {', '.join(to_focus)}! You should NOT focus on other things!! If you list a subgoal of focusing on, make sure that is mentioned and required by the task."
+    )
     prompt_to_plan.append("Question 4: In these subgoals, what have I already completed based on the previous observations? And which subgoals should I aim to do right now?" + \
                           " These subgoals may need additional common knowledge to make decisions. Please recall the knowledge about the properties of objects or animals. Think step by step, and list the facts that are useful. And then use them for determining or comparing if needed. Finally, list the next subgoals based on the knowledge and current observations.")
     prompt_to_plan.append("Question 5: Based on the observations, did I make any mistakes that prevent me from efficiently finishing the next subgoals? Did I forget to go to a location to pick up thing? Or did I forget to open/activate/move something? Did I repeat any actions too many times? If so, how should I fix it?")
@@ -861,35 +848,32 @@ def get_model_output(args, input_str, tokenizer, lm_model, device, logger):
 
 def post_process_generation(raw_pred):
     ans_match = re.match(r".*<extra_id_0>(.*)<extra_id_1>.*", raw_pred)
-    if ans_match is not None:
-        result = ans_match.group(1)
-    else:
-        result = raw_pred
-
+    result = ans_match[1] if ans_match is not None else raw_pred
     # remove extra <*>'s left in
     result = result.replace("<", " <")
     out = ""
     for token in result.split(" "):
         if (len(token.strip()) > 0):
             if (token[0] != "<"):
-                out += token + " "
+                out += f"{token} "
     result = out
 
     return result.strip()
 
 
 def gpt_select_valid(action, candidates, look, inventory, goal, logger, n=1, gpt_version="gpt-4", llm=None):
-    prompt_to_search = []
-    prompt_to_search.append("Let's play a text game.")
-    prompt_to_search.append(clean_look(look, version="all"))
-    prompt_to_search.append(inventory)
-    prompt_to_search.append("There are some action candidates as follows:")
-    for ac in candidates:
-        prompt_to_search.append(f"- {ac}")
-    prompt_to_search.append(f"\n I want to achieve this goal: {goal} but my action '{action}' is not in the candidate list.")
-    prompt_to_search.append(f"Please consider the objects in the room and inventory and my goal. Think carefully, and then select the best replacement from the list. If no one in the list is a good replacement, return 'none'.")
-    prompt_to_search.append(f"Selected action:") 
-
+    prompt_to_search = ["Let's play a text game.", clean_look(look, version="all")]
+    prompt_to_search.extend(
+        (inventory, "There are some action candidates as follows:")
+    )
+    prompt_to_search.extend(f"- {ac}" for ac in candidates)
+    prompt_to_search.extend(
+        (
+            f"\n I want to achieve this goal: {goal} but my action '{action}' is not in the candidate list.",
+            "Please consider the objects in the room and inventory and my goal. Think carefully, and then select the best replacement from the list. If no one in the list is a good replacement, return 'none'.",
+            "Selected action:",
+        )
+    )
     prompt_to_search = "\n".join(prompt_to_search)
     logger("-"*30 + "prompt_to_search" + "-"*30)
     logger("\n"+prompt_to_search)
@@ -917,14 +901,14 @@ def rank_candidates_by_common_words(query, candidates):
 
     # the first word must be the same 
     candidates = [va for va in candidates if va.split()[0] == query.split()[0]]
-    
+
     # Compute the edit distance between each candidate and the query
     num_commons = [len(set(query.split()) & set(candidate.split())) for candidate in candidates]
-    
-    # Sort the candidates based on their distance to the query
-    ranked_candidates = [candidate for _, candidate in sorted(zip(num_commons, candidates), reverse=True)]
-    
-    return ranked_candidates
+
+    return [
+        candidate
+        for _, candidate in sorted(zip(num_commons, candidates), reverse=True)
+    ]
 
 if __name__ == "__main__":  
     print()

@@ -34,16 +34,12 @@ def get_analysis(r, cut_off=None):
     return avg_score, avg_score_v2, taskName
 
 def add_reuslts(log_folder,results, model_names, model_name=None):
-    json_files = glob.glob(log_folder + "/*.json")
+    json_files = glob.glob(f"{log_folder}/*.json")
     for jf in json_files:
         with open(jf) as f:
             r = json.load(f)
         task_start = jf.index("task")
-        if "seed" in jf:
-            task_end = jf.index("-seed")
-        else:
-            task_end = jf.index("-", task_start)
-            # print(jf)
+        task_end = jf.index("-seed") if "seed" in jf else jf.index("-", task_start)
         task_num = jf[task_start+4:task_end-8]
         # print(task_num)
         if task_num not in results:
@@ -60,7 +56,7 @@ def add_reuslts(log_folder,results, model_names, model_name=None):
         # if "mini" not in model_name:
         #     results[task_num][model_name+"(mini)"] = avg_score_mini, avg_score_mini_v2
 
-        
+
         # taskName
         taskid_to_name[task_num] = taskName
 
@@ -71,7 +67,7 @@ model_names = []
 add_reuslts("drrn-scienceworld/eval_logs", results, model_names, "drrn-mini")
 
 
-cols = ["trid", "old_tid", "task_name"] + model_names 
+cols = ["trid", "old_tid", "task_name"] + model_names
 rows = []
 rows_v2 = []
 for i in range(30):
@@ -87,7 +83,7 @@ for i in range(30):
         except:
             row.append("-0.0001")
             # row_v2.append("-0.0001")
-    row.append(max([float(s) for s in row[3:]]))
+    row.append(max(float(s) for s in row[3:]))
     rows.append(row)
     rows_v2.append(row_v2)
 
@@ -105,18 +101,19 @@ if len(sys.argv) > 1 and sys.argv[1] == "--selected":
 
 for j in range(len(cols)-3):
     scores = [float(r[3+j]) for r in rows]
-    avg_s = np.mean([s for s in scores])
+    avg_s = np.mean(list(scores))
     avg_scores.append("{:.2f}".format(avg_s))
     # std_scores.append(np.std(scores))
     # scores_v2 = [float(r[3+j]) for r in rows_v2]
     # avg_scores_v2.append(np.mean(scores_v2))
 
- 
-# rows.sort(key=lambda x: "0"+x[0] if x[0].index("-")<=1 else x[0])
 
-rows.append(["-"*5]*2 + ["-"*5]*len(rows[0]))
-rows.append(["-", "-" , "all tasks (avg)"] + avg_scores)
-
+rows.extend(
+    (
+        ["-" * 5] * 2 + ["-" * 5] * len(rows[0]),
+        ["-", "-", "all tasks (avg)"] + avg_scores,
+    )
+)
 cols = [c.replace("logs/","") for c in cols]
 # rows.append(["-", "-" , "all tasks (std)"] + std_scores)
 # rows.append(["-", "-" , "all tasks (stop)"] + avg_scores_v2)

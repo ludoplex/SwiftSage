@@ -1,5 +1,5 @@
 import json
-import os 
+import os
 import numpy as np 
 
 folder = "analysis/oracle_log"
@@ -36,13 +36,11 @@ id2id = """
 10-1    23
 10-2    24
 """
-id_order = []
-for line in id2id.splitlines():
-    if '    ' not in line:
-        continue 
-    id_order.append(int(line.split("    ")[1]))
+id_order = [
+    int(line.split("    ")[1]) for line in id2id.splitlines() if '    ' in line
+]
 print(id_order)
-    
+
 
 easy_tasks = []
 medium_tasks = []

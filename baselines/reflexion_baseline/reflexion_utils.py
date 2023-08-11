@@ -33,20 +33,19 @@ def _generate_reflection_query(prompt: str, memory: List[str], model_name: str =
 {prompt}STATUS: FAIL
 """
 
-        if len(memory) > 0:
+        if memory:
             query += '\n\nPlans from past attempts:\n'
             for i, m in enumerate(memory):
                 query += f'Trial #{i}: {m}\n'
 
         query += '\n\nNew plan:'
 
-        if len(encoding.encode(query)) > max_len - 266:
-            index1 = prompt.find('>')
-            index2 = prompt.find('>', index1+1)
-            prompt = prompt[:index1] + prompt[index2:]
-        else:
+        if len(encoding.encode(query)) <= max_len - 266:
             break
 
+        index1 = prompt.find('>')
+        index2 = prompt.find('>', index1+1)
+        prompt = prompt[:index1] + prompt[index2:]
     return query
 
 def update_memory(prompt, env_configs, model_name):
