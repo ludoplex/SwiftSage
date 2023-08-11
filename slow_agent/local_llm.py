@@ -48,7 +48,9 @@ def generate(sage_input, logger=print):
     )
 
     inputs = llm_tokenizer(all_input, return_tensors="pt")
-    cnt = 0 
+    cnt = 0
+    prefix = "### Assistant:"
+
     while True:
         sample = llm_model.generate(
             input_ids=inputs["input_ids"].to(llm_model.device),
@@ -61,17 +63,14 @@ def generate(sage_input, logger=print):
         )
         output = llm_tokenizer.decode(sample[0])
         cnt += 1
-        prefix = "### Assistant:"
-
         if prefix in output:
             output = output[output.index(prefix) + len(prefix) :]
             if "Question 5:" in output or "Action 1: " in output:
                 break
         if sage_input.startswith("Hello, who are you?"):
-            break 
+            break
         logger(f"Count: {cnt}")
-    result = output.strip().replace("<|endoftext|>", "---")
-    return result
+    return output.strip().replace("<|endoftext|>", "---")
 
 
 if __name__ == "__main__":

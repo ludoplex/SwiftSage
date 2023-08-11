@@ -68,18 +68,16 @@ id2id = """
 10-1    23
 10-2    24
 """
-id_order = []
-for line in id2id.splitlines():
-    if '    ' not in line:
-        continue 
-    id_order.append(int(line.split("    ")[1]))
+id_order = [
+    int(line.split("    ")[1]) for line in id2id.splitlines() if '    ' in line
+]
 print(id_order)
 
 print("-"*50)
+# print(table_list[id])
+prev_c = ''
+line = ""
 for id in id_order:
-    # print(table_list[id])
-    prev_c = ''
-    line = ""
     text = table_list[id]
     # for i, c in enumerate(text):
     #     c = c.replace("\t", " ")
@@ -87,7 +85,7 @@ for id in id_order:
     #         continue 
     #     line += c
     print(text.replace("\t", " "))
-    
+
 """
  
  

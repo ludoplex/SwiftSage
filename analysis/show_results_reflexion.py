@@ -1,5 +1,5 @@
-import json 
-import glob 
+import json
+import glob
 import numpy as np
 from tabulate import tabulate
 from data_utils.data_utils import get_real_task_id
@@ -11,7 +11,7 @@ results = {}
 
 for file_name in tqdm(log_files):
     task_id = file_name[:-4]
-    task_score_file_name = task_id + '-score.txt'
+    task_score_file_name = f'{task_id}-score.txt'
     with open(task_score_file_name) as f:
         text = f.readlines()
         index2 = text[1].find('Scores')
@@ -34,7 +34,7 @@ for file_name in tqdm(log_files):
                             scores.append(scores[-1])
                         flag = 0
                     j -= 1
-               
+
                 all_scores.append(scores)
                 scores = []
         all_scores = np.array(all_scores)
@@ -78,11 +78,15 @@ avg_scores = []
 
 for j in range(len(cols)-3):
     scores = [float(r[3+j]) for r in rows]
-    avg_s = np.mean([s for s in scores])
+    avg_s = np.mean(list(scores))
     avg_scores.append("{:.2f}".format(avg_s))
 
-rows.append(["-"*5]*2 + ["-"*5]*len(rows[0]))
-rows.append(["-", "-" , "all tasks (avg)"] + avg_scores)
+rows.extend(
+    (
+        ["-" * 5] * 2 + ["-" * 5] * len(rows[0]),
+        ["-", "-", "all tasks (avg)"] + avg_scores,
+    )
+)
 print(tabulate(rows, headers=cols, tablefmt="pipe", numalign="center"))
 
 # gpt-3.5-turbo

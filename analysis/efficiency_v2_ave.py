@@ -67,31 +67,34 @@ def analyze_efficiency(folder, model, task):
         if task_id != task:
             continue
         with open(filename) as f:
-            samples = json.load(f) 
-        cnt = 0 
+            samples = json.load(f)
+        cnt = 0
         K = 3
         all_scores = []
         for var_id, sample in samples.items():
             scores = [int(float(h['score'])*100) for h in sample['history']['history'] if float(h['score'])>=0]
             while scores[-1] == scores[-2] == 100:
                 scores.pop(-1)
-            end = len(scores)
             if model == "Oracle" and scores[-1] != 100:
                 print(task_id, var_id, "WARN")
-            for i in range(len(scores)-1):
-                if scores[i]>scores[i+1]:
-                    end = i + 1
-                    break 
+            end = next(
+                (
+                    i + 1
+                    for i in range(len(scores) - 1)
+                    if scores[i] > scores[i + 1]
+                ),
+                len(scores),
+            )
             scores = scores[:end]
             all_scores.append(scores)
             cnt += 1
             if cnt >= K:
                 break 
 
-        max_len = max([len(i) for i in all_scores])
+        max_len = max(len(i) for i in all_scores)
         for scores in all_scores:
             scores += [scores[-1]] * (max_len - len(scores))
-        
+
         times = list(range(1, max_len+1))
         times = add_random_float(times, a=0, b=0.5)
 
@@ -99,7 +102,7 @@ def analyze_efficiency(folder, model, task):
         all_scores = list(np.mean(all_scores, 0))
         all_scores = add_random_float(all_scores)
         data.append({"model": model, "var_id": int(var_id), "task": task_id, "time": times, "score": all_scores})
-            
+
     return data 
 
 tasks = [17, 19, 18, 7, 8, 25, 6, 5, 3, 13, 26, 29, 4, 27, 28, 2, 20, 12, 21, 11, 1, 22, 10, 15, 9, 14, 0, 16, 23, 24]
@@ -124,11 +127,11 @@ for i in trange(30):
     # data += analyze_efficiency("reflexion_logs/gpt-4", model="Reflexion", task=t)
     # data += analyze_efficiency("saycan_logs/gpt-4", model="SayCan", task=t)
 
-    max_time_length = max([len(x["time"]) for x in data])    
+    max_time_length = max(len(x["time"]) for x in data)    
 
     sns.set_palette("husl")
     ax = axes.flatten()[int(i)]
-    models = sorted(list(set(d['model'] for d in data)))
+    models = sorted(list({d['model'] for d in data}))
     model_colors = {
         # "SayCan": "yellow",
         "SwiftSage": "blue",
@@ -160,28 +163,28 @@ for i in trange(30):
 
     if real_task_id == "4-2":
         max_time_length = max_time_length / 8
-    
+
     if real_task_id == "3-1":
         max_time_length = max_time_length / 3
 
     if real_task_id == "6-2":
         max_time_length = max_time_length / 6
-    
+
     if real_task_id == "8-2":
         max_time_length = max_time_length / 1.5
-    
+
     if real_task_id == "3-2":
         max_time_length = max_time_length / 3
-    
+
     if real_task_id == "2-1":
         max_time_length = max_time_length / 4
-    
+
     if real_task_id == "6-3":
         max_time_length = max_time_length / 5
 
     if real_task_id == "3-3":
         max_time_length = max_time_length / 5 
-    
+
     if real_task_id == "5-1":
         max_time_length = max_time_length / 2
 
@@ -193,5 +196,5 @@ for i in trange(30):
     ax.yaxis.set_visible(False)
     ax.set_title(f'{real_task_id} {task_type[i]} ', fontsize=8, loc="right", y=-0.1)
 fig.tight_layout()
-fig.savefig(f'analysis/test_ave.png', format='png')
-fig.savefig(f'analysis/test_ave.pdf', format='pdf')
+fig.savefig('analysis/test_ave.png', format='png')
+fig.savefig('analysis/test_ave.pdf', format='pdf')

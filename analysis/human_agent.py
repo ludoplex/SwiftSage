@@ -28,10 +28,8 @@ def get_file_name(args, task_num):
         # Make path if it doesn't exist
         if not os.path.exists(args['output_path']):
             os.makedirs(args["output_path"])
-  
-    filenameOutPrefixSeed = args["output_path"] + "task" + str(task_num)
 
-    return filenameOutPrefixSeed
+    return args["output_path"] + "task" + str(task_num)
   
 
 
@@ -47,12 +45,12 @@ def eval(args, task_num, logger):
         compose_instance = compose_instance_v3
     elif args["compose_mode"] == "v4":
         compose_instance = compose_instance_v4
-    
-    demo_data = None 
+
+    demo_data = None
     if args["demo_file"]: 
         with open(args["demo_file"]) as f:
             demo_data = json.load(f)
-    
+
     # Initialize environment
     # env = ScienceWorldEnv("", args["jar_path"], envStepLimit = args["env_step_limit"], threadNum = 0)
     env = ScienceWorldEnv("", args["jar_path"], envStepLimit = args["env_step_limit"])
@@ -69,7 +67,7 @@ def eval(args, task_num, logger):
     for variation in variations:
         if args["debug_var"] >=0 and variation != args["debug_var"]:
             print(f"Skipping the Var: {variation} because we only focus on args['debug_var'']={args['debug_var']}")
-            continue 
+            continue
         # train_data = []
         env.load(taskName, variation, args["simplification_str"], generateGoldPath=True)
         task_description = env.taskdescription()[18:]
@@ -81,9 +79,9 @@ def eval(args, task_num, logger):
         recent_reward = [0.0]
         # recent_actions_without_open = []
         places = []
-        objects = [] 
+        objects = []
         # bad_words_ids = None
- 
+
         obs, info = env.reset()
 
         prev_obs = 'N/A'
@@ -100,25 +98,25 @@ def eval(args, task_num, logger):
         # however, the t5 model only generates the action "look around", which will result in a dead loop below
         # so the max_steps here is only used to avoid the model generating the same action forever
         max_steps = args["env_step_limit"] * 2
- 
+
         action_buffer = []
-        enable_system2 = True 
+        enable_system2 = True
         last_time_system2 = -1
         while not done:
 
             if step - last_time_system2 >= 5 and not enable_system2:
                 # only when we did not use System 2 in the past five time steps
                 enable_system2 = True
-            
-            print("-"*50+f"Variation: {variation}, Step: {step}"+"-"*50) 
+
+            print("-"*50+f"Variation: {variation}, Step: {step}"+"-"*50)
             print(f"Action Buffer: {action_buffer}")
             validActions = getFilteredValidActions(env, info["look"], task_id=task_num, task_desc=task_description)
             print(f"look= {info['look']}")
             print(f"inventory= {env.inventory()}")
             # print(f"validActions= {validActions}") 
             action = input("Your action: ")
-            
- 
+
+
             obs, reward, done, info = env.step(action)
             if obs.startswith("Ambiguous request"):
                 # choose 0
@@ -128,23 +126,19 @@ def eval(args, task_num, logger):
             reward = score - last_score
             recent_reward.append(reward/100)
             recent_scores.append(score/100)
-            recent_actions.append(action) 
+            recent_actions.append(action)
             recent_obs.append(obs)
-            
+
             if score < 0:
                 # Our own solution for dealing with such cases
-                if args["no_stop"]:
-                    done = True
-                    score = last_score
-                else:
-                    done = True
-                    score = 0
+                score = last_score if args["no_stop"] else 0
+                done = True
             last_score = score
 
             #print("Input string: " + str(input_str))
             print(f"Variation: {variation}, Step: {step}")
             print(f"Action: {action}")
-            print("Obs: " + sanitizeStr(obs))
+            print(f"Obs: {sanitizeStr(obs)}")
             print(f"Score: {score}")
             if recent_reward[-1] > 0:
                 print(f"Reward: +{recent_reward[-1]*100}")
@@ -154,17 +148,17 @@ def eval(args, task_num, logger):
             step += 1
             if (step >= max_steps) or done:
                 break
-  
 
-            print("Recent Actions: " + str(recent_actions))
-            print("Recent Obervations: " + str(recent_obs))
-            print("Recent Reward: " + str(recent_reward))
 
-            # Early stopping if we're in a loop
-            # TODO: removed this due to "wait and checking something"
-            # if len(recent_actions) >= 5 and len(set(recent_actions[-5:])) == 2:
-            #     print("Many recent actions in history are the same -- model is likely in a loop, stopping early.")
-            #     break
+            print(f"Recent Actions: {recent_actions}")
+            print(f"Recent Obervations: {recent_obs}")
+            print(f"Recent Reward: {recent_reward}")
+
+                    # Early stopping if we're in a loop
+                    # TODO: removed this due to "wait and checking something"
+                    # if len(recent_actions) >= 5 and len(set(recent_actions[-5:])) == 2:
+                    #     print("Many recent actions in history are the same -- model is likely in a loop, stopping early.")
+                    #     break
 
 
         # Store results
@@ -174,20 +168,18 @@ def eval(args, task_num, logger):
         scores.append(score)
 
         print("Run completed...")
-        print("Scores: " + str(scores))
- 
+        print(f"Scores: {scores}")
+
         time.sleep(2)
 
     # Episodes are finished -- manually save any last histories still in the buffer
     env.saveRunHistoriesBufferIfFull(filenameOutPrefixSeed, maxPerFile=args["max_episode_per_file"], forceSave=True)
 
     avg = sum(scores) / len(scores)
-    print("Average score: " + str(avg))
+    print(f"Average score: {str(avg)}")
 
-    f = open(filenameOutPrefixSeed + "-score.txt", "a")
-    f.write("\n" + "Task name:" + taskName + "Scores: " + str(scores) + " Average score: " + str(avg) + " Args: " + str(args) + "\n")
-    f.close()
-
+    with open(f"{filenameOutPrefixSeed}-score.txt", "a") as f:
+        f.write("\n" + "Task name:" + taskName + "Scores: " + str(scores) + " Average score: " + str(avg) + " Args: " + str(args) + "\n")
     print("Shutting down server...")
     # env.shutdown()
 
@@ -197,11 +189,11 @@ def eval(args, task_num, logger):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    debug = True 
-    parser.add_argument("--jar_path", type=str) 
+    debug = True
+    parser.add_argument("--jar_path", type=str)
     parser.add_argument("--task_nums", default="11")  # use comma to split 
     parser.add_argument("--env_step_limit", type=int, default=100) # for different tasks, this should be different 
-    parser.add_argument("--lm_path", default="fast_agent/model_ckpts/flan_large_0411/checkpoint-500") 
+    parser.add_argument("--lm_path", default="fast_agent/model_ckpts/flan_large_0411/checkpoint-500")
     parser.add_argument("--simplification_str", default="easy")
     parser.add_argument("--beams", type=int, default=5)
     parser.add_argument("--max_episode_per_file", type=int, default=9999)
@@ -214,16 +206,12 @@ def parse_args():
     parser.add_argument("--max_input_len", type=int, default=1024)
     parser.add_argument("--cut_off", action="store_true", default=True)
     parser.add_argument("--sbert", action="store_true", default=True)
-    parser.add_argument("--no_stop", action="store_true", default=True) 
-    parser.add_argument("--slow_agent", action="store_true", default=True) 
+    parser.add_argument("--no_stop", action="store_true", default=True)
+    parser.add_argument("--slow_agent", action="store_true", default=True)
     parser.add_argument("--demo_file", default="data_utils/demos.json", type=str)
     parser.add_argument("--debug_var", type=int, default=93)
-        # parser.add_argument("--slow_prompt_path", type=str, default="slow_agent/query_data.gpt3.5.json")
-        
-
     args = parser.parse_args()
-    params = vars(args)
-    return params
+    return vars(args)
 
 #
 #   Main
@@ -240,8 +228,7 @@ def init_logger(args, task_num, log_level=INFO):
     ch.setLevel(log_level)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    logging_dir = args["output_path"]
-    if logging_dir:
+    if logging_dir := args["output_path"]:
         os.makedirs(logging_dir, exist_ok=True)
         now = int(round(time.time() * 1000))
         timestr = time.strftime('%Y-%m-%d_%H-%M', time.localtime(now / 1000))

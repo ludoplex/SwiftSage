@@ -57,8 +57,9 @@ def get_result(file_name):
     
     return results
 
-results_all = {}
-results_all["ss"] = get_result('fast_slow_logs/test_mini_all_0424_v1_gpt-4/task*.log')
+results_all = {
+    "ss": get_result('fast_slow_logs/test_mini_all_0424_v1_gpt-4/task*.log')
+}
 print(results_all)
 all_tokens = 0
 all_actions = 0

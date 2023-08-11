@@ -1,5 +1,5 @@
-import json 
-import os 
+import json
+import os
 from collections import defaultdict
 
 test_mini_folder = "fast_slow_logs/test_mini_all_0425_v1_gpt-3.5-turbo"
@@ -14,7 +14,7 @@ for foldername in [test_mini_folder, test_mini_2_folder]:
         if f.endswith(".json") and f.startswith("task"):
             taskid = f.split("-")[0]
             task_files[taskid].append(os.path.join(foldername, f))
-            
+
 for task, files in task_files.items():
     data = {}
     start = 9999
@@ -24,7 +24,7 @@ for task, files in task_files.items():
         start = min(start, int(s))
         end = max(end, int(e))
         with open(file) as f:
-            data.update(json.load(f))
+            data |= json.load(f)
     # print(len(data))
     # print(start, end)
     assert len(data) == end-start+1

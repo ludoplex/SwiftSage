@@ -165,9 +165,13 @@ def main():
 
     # Log on each process the small summary:
     logger.warning(
-        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu} "
-        + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16} "
-        + f"bf16-bits training: {training_args.bf16}"
+        (
+            (
+                f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu} "
+                + f"distributed training: {training_args.local_rank != -1}, 16-bits training: {training_args.fp16} "
+            )
+            + f"bf16-bits training: {training_args.bf16}"
+        )
     )
     logger.info(f"Training/evaluation parameters {training_args}")
 
@@ -210,18 +214,18 @@ def main():
     )
     model = AutoModelForSeq2SeqLM.from_pretrained(
         model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
+        from_tf=".ckpt" in model_args.model_name_or_path,
         config=config,
-        cache_dir=model_args.cache_dir
+        cache_dir=model_args.cache_dir,
     )
 
     model.resize_token_embeddings(len(tokenizer))
- 
+
     # if model_args.DualEncoder:
     #     DualEncoder_model = DualEncoderT5(model.config)
     #     DualEncoder_model.load_t5(model.state_dict())
     #     model = DualEncoder_model
-        
+
     prefix = data_args.source_prefix if data_args.source_prefix is not None else ""
 
     # Preprocessing the datasets.
@@ -245,20 +249,21 @@ def main():
             "label_smoothing is enabled but the `prepare_decoder_input_ids_from_labels` method is not defined for"
             f"`{model.__class__.__name__}`. This will lead to loss being calculated twice and will take up more memory"
         )
- 
-    
+
+
     def preprocess_function_original(examples):
-        inputs = [ex for ex in examples['input']]
-        targets = [ex for ex in examples['target']]
+        inputs = list(examples['input'])
+        targets = list(examples['target'])
         inputs = [prefix + inp for inp in inputs]
         model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
-        
+
         with tokenizer.as_target_tokenizer():
             labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
 
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
-    
+
+        
 
     preprocess_function = preprocess_function_original
 
@@ -315,7 +320,7 @@ def main():
     # Data collator
     label_pad_token_id = -100 if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id
 
-    
+
     data_collator = DataCollatorForSeq2Seq(
         tokenizer,
         model=model,

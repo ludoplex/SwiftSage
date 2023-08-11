@@ -93,10 +93,8 @@ def get_file_name(args, task_num):
         # Make path if it doesn't exist
         if not os.path.exists(args['output_path']):
             os.makedirs(args["output_path"])
-  
-    filenameOutPrefixSeed = args["output_path"] + "task" + str(task_num)
 
-    return filenameOutPrefixSeed
+    return args["output_path"] + "task" + str(task_num)
   
 
 

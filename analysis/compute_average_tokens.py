@@ -13,7 +13,7 @@ def get_result(file_name):
     log_files = glob.glob(file_name)
     for file_name in tqdm(log_files):
         task_id = file_name[:-4]
-        task_score_file_name = task_id + '-score.txt'
+        task_score_file_name = f'{task_id}-score.txt'
         with open(task_score_file_name) as f:
             text = f.readlines()
             index2 = text[1].find('Scores')
@@ -33,27 +33,26 @@ def get_result(file_name):
                     index = text[i].find('Prompt')
                     length = len(encoding.encode(text[i][index:]))
                     # print(text[i])
-                
+
                 elif '[INFO' in text[i] and flag:
                     token_len.append(length)
                     flag = 0
                     length = 0
                     # print(text[i])
                     # exit()
-                
+
                 else:
                     length += len(encoding.encode(text[i]))
                     # print(text[i])
-                
+
                 # print(length)
-                
+
             results[task_name] = {'ave_token': sum(token_len)/len(token_len), 'num_actions': len(token_len)}
             token_len = []
-    
+
     return results
 
-results_all = {}
-results_all["react"] = get_result('ReAct_logs/gpt-4/*.log')
+results_all = {"react": get_result('ReAct_logs/gpt-4/*.log')}
 results_all["reflexion"] = get_result('reflexion_logs/gpt-4/*.log')
 results_all["saycan"] = get_result('saycan_logs/gpt-4/*.log')
 # print(results_all)
@@ -85,9 +84,13 @@ avg_scores = []
 
 for j in range(len(cols)-3):
     scores = [float(r[3+j]) for r in rows]
-    avg_s = np.mean([s for s in scores])
+    avg_s = np.mean(list(scores))
     avg_scores.append("{:.2f}".format(avg_s))
 
-rows.append(["-"*5]*2 + ["-"*5]*len(rows[0]))
-rows.append(["-", "-" , "all tasks (avg)"] + avg_scores)
+rows.extend(
+    (
+        ["-" * 5] * 2 + ["-" * 5] * len(rows[0]),
+        ["-", "-", "all tasks (avg)"] + avg_scores,
+    )
+)
 print(tabulate(rows, headers=cols, tablefmt="pipe", numalign="center"))
